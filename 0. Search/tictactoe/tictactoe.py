@@ -126,43 +126,52 @@ def minimax(board):
         v = float('-inf')
         bestAction = None
         for action in actions(board):
-            minimum = minValue(result(board, action))
+            minimum = minValue(result(board, action), v)
             if v < minimum:
                 v = minimum
                 bestAction = action
-            #v = max(v, minValue(result(board, action)))
 
         return bestAction
     else: # Trying to minimize score
         v = float('inf')
         bestAction = None
         for action in actions(board):
-            maximum = maxValue(result(board, action))
+            maximum = maxValue(result(board, action), v)
             if v > maximum:
                 v = maximum
                 bestAction = action
-            #v = max(v, minValue(result(board, action)))
 
         return bestAction
     
+# For the following functions, valueToBeat is part of the Alpha-Beta Pruning process
+# valueToBeat is the current best option the AI has found
+# For example, if the AI is playing as X, and it has a valueToBeat of 0 (meaning it has found a set of actions it can take to guarantee at least a tie),
+#  then if it is searching other actions and finds a set of actions that leads to a result of -1 (meaning it loses), it doesn't need to check the other
+#  actions down that path because it won't ultimately end up choosing it (as it already found a better set of actions)
 
-def maxValue(board):
+def maxValue(board, valueToBeat): # Part of minimax algorithm
     if terminal(board):
         return utility(board)
     
     v = float('-inf')
     for action in actions(board):
-        v = max(v, minValue(result(board, action)))
+        v = max(v, minValue(result(board, action), valueToBeat))
+
+        if v > valueToBeat: # Alpha-Beta Pruning
+            return v
 
     return v
 
-def minValue(board):
+def minValue(board, valueToBeat): # Part of minimax algorithm
     if terminal(board):
         return utility(board)
     
     v = float('inf')
     for action in actions(board):
-        v = min(v, maxValue(result(board, action)))
+        v = min(v, maxValue(result(board, action), valueToBeat))
+
+        if v < valueToBeat: # Alpha-Beta Pruning
+            return v
 
     return v
 
