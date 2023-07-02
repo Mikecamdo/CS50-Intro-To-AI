@@ -62,10 +62,15 @@ def transition_model(corpus, page, damping_factor):
     links = corpus[page]
     num_links = len(links)
 
-    for link in links:
+    if num_links == 0: # if no outgoing links, randomly choose between all pages
+        for a_page in corpus:
+            probability_distribution[a_page] = 1 / len(corpus)
+        return probability_distribution
+
+    for link in links: # random surfer chooses link on page 
         probability_distribution[link] = (1 / num_links) * damping_factor
 
-    random_probability = 1 - damping_factor / len(corpus)
+    random_probability = (1 - damping_factor) / len(corpus) # random surfer choose random page
     for a_page in corpus:
         if a_page in probability_distribution:
             probability_distribution[a_page] += random_probability
