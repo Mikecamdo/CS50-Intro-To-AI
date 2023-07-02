@@ -139,7 +139,76 @@ def joint_probability(people, one_gene, two_genes, have_trait):
         * everyone in set `have_trait` has the trait, and
         * everyone not in set` have_trait` does not have the trait.
     """
-    raise NotImplementedError
+    the_joint_probability = 1
+
+    for person in people: # loops through every person
+        num_genes = 0 # how many genes the current person has
+        if person in one_gene:
+            num_genes = 1
+            if people[person]['mother'] == None: # if they have no parents
+                the_joint_probability *= PROBS['gene'][1] # use unconditional probability
+            else: # if they have parents
+                the_joint_probability *= conditional_probability(people, person, one_gene, two_genes) # use conditional probability
+        elif person in two_genes:
+            num_genes = 2
+            if people[person]['mother'] == None: # if they have no parents
+                the_joint_probability *= PROBS['gene'][2] # use unconditional probability
+            else: # if they have parents
+                the_joint_probability *= conditional_probability(people, person, one_gene, two_genes) # use conditional probability
+
+        else:
+            if people[person]['mother'] == None: # if they have no parents
+                the_joint_probability *= PROBS['gene'][0] # use unconditional probability
+            else: # if they have parents
+                the_joint_probability *= conditional_probability(people, person, one_gene, two_genes) # use conditional probability
+
+        # using num_genes (found earlier), find conditional probability of having the trait
+        if person in have_trait: # if they have the trait
+            the_joint_probability *= PROBS['trait'][num_genes][True]
+        else: # if they don't have the trait
+            the_joint_probability *= PROBS['trait'][num_genes][False]
+        
+    return the_joint_probability
+
+def conditional_probability(people, person, one_gene, two_genes):
+    """
+    Custom function that I added.
+    This function calculates the conditional probability that a child has 0, 1, or 2 genes
+    (this conditional probability is dependent upon the parents).
+
+    This function returns the calculated conditional probability.
+    """
+    yes_mother_prob = 0 # probability child gets gene from mother
+    no_mother_prob = 0 # probability child doesn't get gene from mother
+    yes_father_prob = 0 # probability child gets gene from father
+    no_father_prob = 0 # probability child doesn't get gene from father
+
+    if people[person]['mother'] in one_gene: # if mother has 1 gene
+        yes_mother_prob = .5
+        no_mother_prob = 1 - yes_mother_prob
+    elif people[person]['mother'] in two_genes: # if mother has 2 genes
+        yes_mother_prob = 1 - PROBS["mutation"]
+        no_mother_prob = 1 - yes_mother_prob
+    else: # if mother has 0 genes
+        yes_mother_prob = 0 + PROBS["mutation"]
+        no_mother_prob = 1 - yes_mother_prob
+
+    if people[person]['father'] in one_gene: # if father has 1 gene
+        yes_father_prob = .5
+        no_father_prob = 1 - yes_father_prob
+    elif people[person]['father'] in two_genes: # if father has 2 genes
+        yes_father_prob = 1 - PROBS["mutation"]
+        no_father_prob = 1 - yes_father_prob
+    else: # if father has 0 genes
+        yes_father_prob = 0 + PROBS["mutation"]
+        no_father_prob = 1 - yes_father_prob
+
+    if person in one_gene: # if child only has 1 gene, probability is if child gets it from the mother and not the father OR the child gets it from the father and not the mother
+        return (yes_mother_prob * no_father_prob) + (yes_father_prob * no_mother_prob)
+    elif person in two_genes: # if child has 2 genes, probability is if child gets it from both parents
+        return yes_mother_prob * yes_father_prob
+    else: # if child has 0 genes, probability is if child gets it from neither parent
+        return no_mother_prob * no_father_prob
 
 
 def update(probabilities, one_gene, two_genes, have_trait, p):
@@ -149,15 +218,33 @@ def update(probabilities, one_gene, two_genes, have_trait, p):
     Which value for each distribution is updated depends on whether
     the person is in `have_gene` and `have_trait`, respectively.
     """
-    raise NotImplementedError
+    for person in probabilities:
+        if person in one_gene:
+            probabilities[person]["gene"][1] += p
+        elif person in two_genes:
+            probabilities[person]["gene"][2] += p
+        else:
+            probabilities[person]["gene"][0] += p
 
+        if person in have_trait:
+            probabilities[person]["trait"][True] += p
+        else:
+            probabilities[person]["trait"][False] += p
 
 def normalize(probabilities):
     """
     Update `probabilities` such that each probability distribution
     is normalized (i.e., sums to 1, with relative proportions the same).
     """
-    raise NotImplementedError
+    for person in probabilities:
+        total = probabilities[person]["gene"][0] + probabilities[person]["gene"][1] + probabilities[person]["gene"][2]
+        probabilities[person]["gene"][0] = probabilities[person]["gene"][0] / total
+        probabilities[person]["gene"][1] = probabilities[person]["gene"][1] / total
+        probabilities[person]["gene"][2] = probabilities[person]["gene"][2] / total
+
+        total = probabilities[person]["trait"][True] + probabilities[person]["trait"][False]
+        probabilities[person]["trait"][True] = probabilities[person]["trait"][True] / total
+        probabilities[person]["trait"][False] = probabilities[person]["trait"][False] / total
 
 
 if __name__ == "__main__":
