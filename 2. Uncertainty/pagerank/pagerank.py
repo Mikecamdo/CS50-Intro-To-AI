@@ -123,7 +123,7 @@ def iterate_pagerank(corpus, damping_factor):
     page_rank = { }
     num_pages = len(corpus)
 
-    for page in corpus:
+    for page in corpus: # start by giving each page a rank of 1 / num_pages
         page_rank[page] = 1 / num_pages
 
     
@@ -134,6 +134,8 @@ def iterate_pagerank(corpus, damping_factor):
             for page, links in corpus.items():
                 if rank in links:
                     second_condition += (page_rank[page] / len(links))
+                elif len(links) == 0:
+                    second_condition += (page_rank[page] / len(corpus))
 
             old_value = page_rank[rank]
             page_rank[rank] = ((1 - damping_factor) / num_pages) + damping_factor * second_condition
@@ -141,10 +143,8 @@ def iterate_pagerank(corpus, damping_factor):
             if abs(change_in_value) > max_change_in_value:
                 max_change_in_value = abs(change_in_value)
 
-        if max_change_in_value <= 0.001:
-            break
-
-    return page_rank
+        if max_change_in_value <= 0.001: # end function when values stop changing by more than 0.001
+            return page_rank
 
 
 if __name__ == "__main__":
