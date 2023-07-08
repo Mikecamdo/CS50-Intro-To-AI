@@ -99,7 +99,10 @@ class CrosswordCreator():
         (Remove any values that are inconsistent with a variable's unary
          constraints; in this case, the length of the word.)
         """
-        raise NotImplementedError
+        for variable in self.domains:
+            for word in self.domains[variable]:
+                if len(word) != variable.length:
+                    self.domains[variable].remove(word)
 
     def revise(self, x, y):
         """
@@ -110,8 +113,20 @@ class CrosswordCreator():
         Return True if a revision was made to the domain of `x`; return
         False if no revision was made.
         """
-        raise NotImplementedError
+        revisionMade = False
 
+        if self.crossword.overlaps[x, y] is not None: # if an overlap exists
+            i, j = self.crossword.overlaps[x, y]
+            for word in self.domains[x]:
+                for other_word in self.domains[y]:
+                    if word[i] == other_word[j]: # if word in x is valid with a word in y
+                        break
+                self.domains[x].remove(word) # if word in x is not valid with any word in y
+                revisionMade = True
+
+
+        return revisionMade
+    
     def ac3(self, arcs=None):
         """
         Update `self.domains` such that each variable is arc consistent.
@@ -121,21 +136,60 @@ class CrosswordCreator():
         Return True if arc consistency is enforced and no domains are empty;
         return False if one or more domains end up empty.
         """
-        raise NotImplementedError
+        if arcs is None: # create initial queue of all arcs
+            arcs = [ ]
+            for x in self.crossword.variables:
+                for y in self.crossword.variables:
+                    # if the variables are different, overlap, and aren't already in arcs
+                    if x != y and self.crossword.overlaps[x, y] is not None and (y, x) not in arcs:
+                        arcs.append((x, y))
+                    
+        while arcs:
+            x, y = arcs.pop(0)
+            if self.revise(x, y):
+                if len(self.domains[x]) == 0:
+                    return False
+                for neighbor in self.crossword.neighbors(x):
+                    if neighbor != y:
+                        arcs.append(neighbor, x)
+        
+        return True
 
     def assignment_complete(self, assignment):
         """
         Return True if `assignment` is complete (i.e., assigns a value to each
         crossword variable); return False otherwise.
         """
-        raise NotImplementedError
+        for var in self.crossword.variables:
+            if var not in assignment or assignment[var] == "":
+                return False
+            
+        return True
 
     def consistent(self, assignment):
         """
         Return True if `assignment` is consistent (i.e., words fit in crossword
         puzzle without conflicting characters); return False otherwise.
         """
-        raise NotImplementedError
+        word_list = [ ]
+        for var in assignment:
+            if var.length != len(assignment[var]): # checks if all values are the correct length
+                return False
+            if assignment[var] in word_list: # checks if all values are distinct
+                return False
+            word_list.append(assignment[var])
+            
+        arcs = [ ]
+        for x in assignment:
+            for y in assignment:
+                # if the variables are different, overlap, and aren't already in arcs
+                if x != y and self.crossword.overlaps[x, y] is not None and (y, x) not in arcs:
+                    arcs.append((x, y))
+
+        if not self.ac3(arcs):
+            return False
+        
+        return True
 
     def order_domain_values(self, var, assignment):
         """
