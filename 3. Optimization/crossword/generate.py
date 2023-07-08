@@ -100,9 +100,11 @@ class CrosswordCreator():
          constraints; in this case, the length of the word.)
         """
         for variable in self.domains:
-            for word in self.domains[variable]:
+            #print("HERE", variable)
+            for word in self.domains[variable].copy():
                 if len(word) != variable.length:
                     self.domains[variable].remove(word)
+            #print("THERE:", self.domains[variable])
 
     def revise(self, x, y):
         """
@@ -115,15 +117,22 @@ class CrosswordCreator():
         """
         revisionMade = False
 
+        #print("Looking at", x, "and", y)
         if self.crossword.overlaps[x, y] is not None: # if an overlap exists
             i, j = self.crossword.overlaps[x, y]
-            for word in self.domains[x]:
+            for word in self.domains[x].copy():
+                valid_word = False
                 for other_word in self.domains[y]:
+                    #print("Comparing", word, 'and', other_word)
+                    #print(word[i], other_word[j])
                     if word[i] == other_word[j]: # if word in x is valid with a word in y
+                        #print("Breaking")
+                        valid_word = True
                         break
-                self.domains[x].remove(word) # if word in x is not valid with any word in y
-                revisionMade = True
-
+                if not valid_word:
+                    #print(word, "is not compatible with any word in", y)    
+                    self.domains[x].remove(word) # if word in x is not valid with any word in y
+                    revisionMade = True
 
         return revisionMade
     
@@ -137,6 +146,7 @@ class CrosswordCreator():
         return False if one or more domains end up empty.
         """
         if arcs is None: # create initial queue of all arcs
+            #print("Making arcs")
             arcs = [ ]
             for x in self.crossword.variables:
                 for y in self.crossword.variables:
@@ -144,6 +154,7 @@ class CrosswordCreator():
                     if x != y and self.crossword.overlaps[x, y] is not None and (y, x) not in arcs:
                         arcs.append((x, y))
                     
+        #print("Initial arcs:", arcs)
         while arcs:
             x, y = arcs.pop(0)
             if self.revise(x, y):
@@ -151,7 +162,7 @@ class CrosswordCreator():
                     return False
                 for neighbor in self.crossword.neighbors(x):
                     if neighbor != y:
-                        arcs.append(neighbor, x)
+                        arcs.append((neighbor, x))
         
         return True
 
@@ -160,6 +171,7 @@ class CrosswordCreator():
         Return True if `assignment` is complete (i.e., assigns a value to each
         crossword variable); return False otherwise.
         """
+        #FIXME should I make it this??: if len(assignment) == len(self.domains)
         for var in self.crossword.variables:
             if var not in assignment or assignment[var] == "":
                 return False
@@ -195,7 +207,22 @@ class CrosswordCreator():
         The first value in the list, for example, should be the one
         that rules out the fewest values among the neighbors of `var`.
         """
-        raise NotImplementedError
+        neighbors = [neighbor for neighbor in self.crossword.neighbors(var) if neighbor not in assignment]
+
+        ordered_domain_values = [ ]
+        for word in self.domains[var]: # loops through every word in var's domain
+            choices_eliminated = 0
+            for neighbor in neighbors: # for each word, check each neighbor
+                i, j = self.crossword.overlaps[var, neighbor]
+                for word2 in self.domains[neighbor]:
+                    if word[i] != word2[j]:
+                        choices_eliminated += 1 # add 1 if the words aren't compatible
+            ordered_domain_values.append((word, choices_eliminated))
+
+        sorted_list = sorted(ordered_domain_values, key=lambda x: x[1]) # sort list based on choices_eliminated
+        ordered_domain_values = [x[0] for x in sorted_list] # return only the list of words
+
+        return ordered_domain_values
 
     def select_unassigned_variable(self, assignment):
         """
@@ -205,7 +232,20 @@ class CrosswordCreator():
         degree. If there is a tie, any of the tied variables are acceptable
         return values.
         """
-        raise NotImplementedError
+        choice = None
+        for var in self.domains: # loops through all variables
+            #print("Looking at:", var)
+            #print(self.domains[var])
+            if var not in assignment: # if the variable is unassigned
+                if choice is None:
+                    choice = var
+                else:
+                    if len(self.domains[var]) < len(self.domains[choice]): # if the variable has fewer values in its domain
+                        choice = var
+                    elif len(self.domains[var]) == len(self.domains[choice]) and len(self.crossword.neighbors(var)) > len(self.crossword.neighbors(choice)): # if the variable has the same number of values in its domain, but a higher degree
+                        choice = var
+
+        return choice
 
     def backtrack(self, assignment):
         """
@@ -216,7 +256,27 @@ class CrosswordCreator():
 
         If no assignment is possible, return None.
         """
-        raise NotImplementedError
+        #print("Current assignment is:")
+        #print(assignment)
+        if self.assignment_complete(assignment):
+            return assignment
+        
+        var = self.select_unassigned_variable(assignment)
+        words = self.order_domain_values(var, assignment)
+
+        #print("var:", var)
+        #print("words:", words)
+
+        for word in words:
+            assignment[var] = word
+            if self.consistent(assignment):
+                result = self.backtrack(assignment)
+                if result is not None:
+                    return result
+            assignment.pop(var)
+
+        #print("Returning None")
+        return None
 
 
 def main():
