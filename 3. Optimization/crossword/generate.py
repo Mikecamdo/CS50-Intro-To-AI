@@ -179,15 +179,12 @@ class CrosswordCreator():
                 return False
             word_list.append(assignment[var])
             
-        arcs = [ ]
         for x in assignment:
             for y in assignment:
-                # if the variables are different, overlap, and aren't already in arcs
-                if x != y and self.crossword.overlaps[x, y] is not None and (y, x) not in arcs:
-                    arcs.append((x, y))
-
-        if not self.ac3(arcs):
-            return False
+                if x != y and self.crossword.overlaps[x, y] is not None:
+                    i, j = self.crossword.overlaps[x, y]
+                    if (assignment[x][i] != assignment[y][j]):
+                        return False
         
         return True
 
