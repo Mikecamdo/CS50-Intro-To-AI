@@ -100,11 +100,9 @@ class CrosswordCreator():
          constraints; in this case, the length of the word.)
         """
         for variable in self.domains:
-            #print("HERE", variable)
             for word in self.domains[variable].copy():
                 if len(word) != variable.length:
                     self.domains[variable].remove(word)
-            #print("THERE:", self.domains[variable])
 
     def revise(self, x, y):
         """
@@ -117,20 +115,15 @@ class CrosswordCreator():
         """
         revisionMade = False
 
-        #print("Looking at", x, "and", y)
         if self.crossword.overlaps[x, y] is not None: # if an overlap exists
             i, j = self.crossword.overlaps[x, y]
             for word in self.domains[x].copy():
                 valid_word = False
                 for other_word in self.domains[y]:
-                    #print("Comparing", word, 'and', other_word)
-                    #print(word[i], other_word[j])
-                    if word[i] == other_word[j]: # if word in x is valid with a word in y
-                        #print("Breaking")
+                    if word[i] == other_word[j] and word != other_word: # if word in x is valid with a word in y
                         valid_word = True
                         break
                 if not valid_word:
-                    #print(word, "is not compatible with any word in", y)    
                     self.domains[x].remove(word) # if word in x is not valid with any word in y
                     revisionMade = True
 
@@ -146,15 +139,13 @@ class CrosswordCreator():
         return False if one or more domains end up empty.
         """
         if arcs is None: # create initial queue of all arcs
-            #print("Making arcs")
             arcs = [ ]
             for x in self.crossword.variables:
                 for y in self.crossword.variables:
-                    # if the variables are different, overlap, and aren't already in arcs
-                    if x != y and self.crossword.overlaps[x, y] is not None and (y, x) not in arcs:
+                    # if the variables are different and overlap
+                    if x != y and self.crossword.overlaps[x, y] is not None:
                         arcs.append((x, y))
                     
-        #print("Initial arcs:", arcs)
         while arcs:
             x, y = arcs.pop(0)
             if self.revise(x, y):
@@ -171,12 +162,9 @@ class CrosswordCreator():
         Return True if `assignment` is complete (i.e., assigns a value to each
         crossword variable); return False otherwise.
         """
-        #FIXME should I make it this??: if len(assignment) == len(self.domains)
-        for var in self.crossword.variables:
-            if var not in assignment or assignment[var] == "":
-                return False
-            
-        return True
+        if len(assignment) == len(self.domains): # lengths will be same if assignment is complete (as a variable is in assignment only if it has a valid word attached to it)
+            return True
+        return False
 
     def consistent(self, assignment):
         """
@@ -234,8 +222,6 @@ class CrosswordCreator():
         """
         choice = None
         for var in self.domains: # loops through all variables
-            #print("Looking at:", var)
-            #print(self.domains[var])
             if var not in assignment: # if the variable is unassigned
                 if choice is None:
                     choice = var
@@ -256,26 +242,22 @@ class CrosswordCreator():
 
         If no assignment is possible, return None.
         """
-        #print("Current assignment is:")
-        #print(assignment)
         if self.assignment_complete(assignment):
             return assignment
         
         var = self.select_unassigned_variable(assignment)
         words = self.order_domain_values(var, assignment)
 
-        #print("var:", var)
-        #print("words:", words)
+        arcs = [(var, neighbor) for neighbor in self.crossword.neighbors(var)] # for inference
 
         for word in words:
             assignment[var] = word
-            if self.consistent(assignment):
+            if self.consistent(assignment) and self.ac3(arcs=arcs): 
                 result = self.backtrack(assignment)
                 if result is not None:
                     return result
             assignment.pop(var)
 
-        #print("Returning None")
         return None
 
 
