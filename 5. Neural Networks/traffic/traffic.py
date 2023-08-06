@@ -58,7 +58,18 @@ def load_data(data_dir):
     be a list of integer labels, representing the categories for each of the
     corresponding `images`.
     """
-    raise NotImplementedError
+    all_images = [ ]
+    all_labels = [ ]
+
+    for folder in os.listdir(data_dir):
+        for image_file in os.listdir(os.path.join(data_dir, folder)):
+            image = cv2.imread(os.path.join(data_dir, folder, image_file))
+            image = cv2.resize(image, (IMG_WIDTH, IMG_HEIGHT))
+
+            all_images.append(image)
+            all_labels.append(folder)
+
+    return (all_images, all_labels)
 
 
 def get_model():
@@ -67,7 +78,32 @@ def get_model():
     `input_shape` of the first layer is `(IMG_WIDTH, IMG_HEIGHT, 3)`.
     The output layer should have `NUM_CATEGORIES` units, one for each category.
     """
-    raise NotImplementedError
+    model = tf.keras.models.Sequential()
+
+    # Convolutional layer with 64 filters using a 3x3 kernel
+    model.add(tf.keras.layers.Conv2D(64, (3, 3), activation="relu", input_shape=(IMG_WIDTH, IMG_HEIGHT, 3)))
+
+    model.add(tf.keras.layers.MaxPooling2D(pool_size=(2, 2)))
+
+    # Convolutional layer with 64 filters using a 3x3 kernel
+    model.add(tf.keras.layers.Conv2D(64, (3, 3), activation="relu", input_shape=(IMG_WIDTH, IMG_HEIGHT, 3)))
+
+    model.add(tf.keras.layers.MaxPooling2D(pool_size=(2, 2))) #max-pooling layer with 2x2 pool size
+
+    model.add(tf.keras.layers.Flatten()) # flattens units
+
+    model.add(tf.keras.layers.Dense(256, activation="relu")) # hidden layer with 256 units
+    model.add(tf.keras.layers.Dropout(0.4))
+
+    model.add(tf.keras.layers.Dense(NUM_CATEGORIES, activation="softmax")) # output layer
+
+    model.compile(
+        optimizer="adam",
+        loss="categorical_crossentropy",
+        metrics=["accuracy"]
+    )
+
+    return model
 
 
 if __name__ == "__main__":
